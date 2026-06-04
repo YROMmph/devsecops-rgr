@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,7 +45,9 @@ func securityHeaders(next http.Handler) http.Handler {
 }
 
 func render(w http.ResponseWriter, msg string) {
-	page.Execute(w, struct{ Msg string }{msg})
+	if err := page.Execute(w, struct{ Msg string }{msg}); err != nil {
+		log.Printf("ошибка рендеринга шаблона: %м", err)
+	}
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -90,17 +93,29 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { render(w, "Готово к работе.") })
 	mux.HandleFunc("/register", register)
 	mux.HandleFunc("/login", login)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	if _, err :=  w.Write([]byte("ok")); err != nil {
+		log.Printf("ошибка записи ответа healthz: %v", err)}
+	 })
 
 	handler := securityHeaders(mux)
-	addr := ":8080"
+
+	// Сервер с таймаутами — защита от Slowloris и подобных атак (gosec G114).
+	 srv := &http.Server{
+ 		 Addr:              ":8080",
+ 		 Handler:           handler,
+ 		 ReadTimeout:       10 * time.Second,
+ 		 ReadHeaderTimeout: 5 * time.Second,
+ 		 WriteTimeout:      10 * time.Second,
+ 		 IdleTimeout:       60 * time.Second,
+ 	}
 
 	// 5c. Поддержка HTTPS: если заданы TLS_CERT и TLS_KEY — поднимаем TLS.
 	cert, key := os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY")
 	if cert != "" && key != "" {
-		log.Printf("Запуск HTTPS на %s", addr)
-		log.Fatal(http.ListenAndServeTLS(addr, cert, key, handler))
+		log.Printf("Запуск HTTPS на %s", srv.Addr)
+		log.Fatal(srv.ListenAndServeTLS(cert, key))
 	}
-	log.Printf("Запуск HTTP на %s", addr)
-	log.Fatal(http.ListenAndServe(addr, handler))
+	log.Printf("Запуск HTTP на %s", srv.Addr)
+	log.Fatal(srv.ListenAndServe())
 }
