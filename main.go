@@ -46,7 +46,7 @@ func securityHeaders(next http.Handler) http.Handler {
 
 func render(w http.ResponseWriter, msg string) {
 	if err := page.Execute(w, struct{ Msg string }{msg}); err != nil {
-		log.Printf("ошибка рендеринга шаблона: %м", err)
+		log.Printf("ошибка рендеринга шаблона: %v", err)
 	}
 }
 
@@ -94,21 +94,22 @@ func main() {
 	mux.HandleFunc("/register", register)
 	mux.HandleFunc("/login", login)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-	if _, err :=  w.Write([]byte("ok")); err != nil {
-		log.Printf("ошибка записи ответа healthz: %v", err)}
-	 })
+		if _, err := w.Write([]byte("ok")); err != nil {
+			log.Printf("ошибка записи ответа healthz: %v", err)
+		}
+	})
 
 	handler := securityHeaders(mux)
 
 	// Сервер с таймаутами — защита от Slowloris и подобных атак (gosec G114).
-	 srv := &http.Server{
- 		 Addr:              ":8080",
- 		 Handler:           handler,
- 		 ReadTimeout:       10 * time.Second,
- 		 ReadHeaderTimeout: 5 * time.Second,
- 		 WriteTimeout:      10 * time.Second,
- 		 IdleTimeout:       60 * time.Second,
- 	}
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           handler,
+		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 
 	// 5c. Поддержка HTTPS: если заданы TLS_CERT и TLS_KEY — поднимаем TLS.
 	cert, key := os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY")
