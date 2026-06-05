@@ -17,7 +17,7 @@ var (
 )
 
 var page = template.Must(template.New("p").Parse(`<!DOCTYPE html>
-<html lang="ru"><head><meta charset="utf-8"><title>Invoicer</title></head>
+<html lang="ru"><head><meta charset="utf-8"><title>Invoicer</title><style> body { background-color: lightblue; }</style></head>
 <body>
 <h1>DevSecOps РГР — демонстрационное приложение</h1>
 <p>{{.Msg}}</p>
